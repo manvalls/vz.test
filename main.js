@@ -216,13 +216,17 @@ Object.defineProperties(Test.prototype,{
     set: constants.NOOP
   },
   wrap: {value: function(f){
-    var self = this;
+    var self = this,
+        called = false;
     
     if(resolved.get(this)) throw new Error('Test already resolved, cannot call wrap again');
     wraps.of(this).value++;
     
     return function(){
       var ret;
+      
+      if(called) throw new Error('A wrap can only be called once');
+      called = true;
       
       stack.push(self);
       

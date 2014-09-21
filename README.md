@@ -26,7 +26,7 @@ new Test('Array',function(test){
 
 ```javascript
 new Test('setTimeout',function(test){
-  new Test('should call functions when given time has passed, within a 10ms margin',function(test){
+  new Test('should call functions when given time has passed',function(test){
     var t0 = Date.now();
     
     setTimeout(test.wrap(function(){

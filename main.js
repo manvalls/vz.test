@@ -21,6 +21,7 @@ var Test,
 
 function getNL(){
   switch(Test.syntax){
+    case 'md': return '  \n';
     case 'console': return '\n';
     case 'html': return '<br>';
   }
@@ -28,6 +29,7 @@ function getNL(){
 
 function red(txt){
   switch(Test.syntax){
+    case 'md': return txt;
     case 'console': return '\x1B[31m' + txt + '\x1B[39m';
     case 'html': return '<span style="color: red;">' + txt + '</span>';
   }
@@ -35,8 +37,17 @@ function red(txt){
 
 function green(txt){
   switch(Test.syntax){
+    case 'md': return txt;
     case 'console': return '\x1B[32m' + txt + '\x1B[39m';
     case 'html': return '<span style="color: green;">' + txt + '</span>';
+  }
+}
+
+function output(txt){
+  switch(Test.output){
+    case 'std':
+      proc.stdout.write(txt + getNL());
+      break;
   }
 }
 
@@ -48,10 +59,13 @@ function print(test,offset){
       i;
   
   ret += offset;
-  if(c.length) ret += '[' + ok.get(test) + '/' + c.length + ']';
+  if(Test.numbers && c.length) ret += '[' + ok.get(test) + '/' + c.length + ']';
   ret += ' ' + text.get(test);
   
   switch(Test.status){
+    case 'gfm':
+      ret += ' ' + (notOk?':heavy_multiplication_x:':':heavy_check_mark:');
+      break;
     case 'tick':
       ret += ' ' + (notOk?red('✗'):green('✓'));
       break;
@@ -69,25 +83,24 @@ function print(test,offset){
     ret += ' (' + time.toFixed(Test.precision) + 'ms)';
   }
   
+  offset = (Test.syntax == 'md'?'    ':'  ') + offset;
+  
   switch(Test.mode){
     case 'details':
-      offset += '  ';
-      for(i = 0;i < c.length;i++) ret += '\n' + print(c[i],offset);
+      for(i = 0;i < c.length;i++) ret += getNL() + print(c[i],offset);
       break;
       
     case 'errors':
       if(notOk){
-        offset += '  ';
         for(i = 0;i < c.length;i++){
-          if(c[i].status != 'pass') ret += '\n' + print(c[i],offset);
+          if(c[i].status != 'pass') ret += getNL() + print(c[i],offset);
         }
       }
       break;
       
     default:
       if(notOk){
-        offset += '  ';
-        for(i = 0;i < c.length;i++) ret += '\n' + print(c[i],offset);
+        for(i = 0;i < c.length;i++) ret += getNL() + print(c[i],offset);
       }
   }
   
@@ -123,14 +136,10 @@ function resolve(test){
   
   if(Test.mode == 'errors' && test.status == 'pass') return;
   
-  switch(Test.output){
-    case 'std':
-      console.log(print(test,''));
-      break;
-  }
+  output(print(test,Test.syntax == 'md'?'- ':''));
 }
 
-module.exports = Test = function(txt){
+module.exports = Test = function(txt,callback){
   
   if(Test.times){
     if(proc) t0.set(this,proc.hrtime());
@@ -153,12 +162,14 @@ module.exports = Test = function(txt){
     tests.of(stack[stack.length - 1]).value++;
   }
   
+  if(callback) this.wrap(callback)(this);
 };
 
 if(proc){
   
   Test.output = proc.env.output || 'std';
   Test.times = proc.env.times?(proc.env.times == 'true'?true:false):true;
+  Test.numbers = proc.env.numbers?(proc.env.numbers == 'true'?true:false):true;
   Test.errors = proc.env.errors?(proc.env.errors == 'true'?true:false):false;
   Test.precision = proc.env.precision || '2';
   Test.mode = proc.env.mode || 'default';
@@ -182,18 +193,9 @@ if(proc){
       for(i = 0;i < errors.length;i++) if(errors[i].stack) ret += '\n\n' + errors[i].stack;
       ret += '\n';
       
-      switch(Test.syntax){
-        case 'html':
-          ret = ret.replace(/\n/g,'<br>');
-          break;
-      }
+      ret = ret.replace(/\n/g,getNL());
       
-      switch(Test.output){
-        case 'std':
-          console.log(ret);
-          break;
-      }
-      
+      output(ret);
     }
   });
   
@@ -201,6 +203,8 @@ if(proc){
   
   Test.output = 'browser';
   Test.times = true;
+  Test.numbers = true;
+  Test.errors = false;
   Test.precision = '2';
   Test.mode = 'default';
   Test.status = 'tick';

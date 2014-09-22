@@ -19,11 +19,11 @@ var Test,
     tests = new Property(),
     text = new Property();
 
-function getNL(){
+function getNL(insideList){
   switch(Test.syntax){
     case 'md': return '  \n';
     case 'console': return '\n';
-    case 'html': return '<br>';
+    case 'html': return insideList?'\n':'<br>\n';
   }
 }
 
@@ -43,10 +43,10 @@ function green(txt){
   }
 }
 
-function output(txt){
+function output(txt,insideList){
   switch(Test.output){
     case 'std':
-      proc.stdout.write(txt + getNL());
+      proc.stdout.write(txt + getNL(insideList));
       break;
   }
 }
@@ -59,6 +59,7 @@ function print(test,offset){
       i;
   
   ret += offset;
+  if(Test.syntax == 'html') ret += '<ul><li style="font-family: monospace;list-style-type: none;">';
   if(Test.numbers && c.length) ret += '[' + ok.get(test) + '/' + c.length + ']';
   ret += ' ' + text.get(test);
   
@@ -83,26 +84,30 @@ function print(test,offset){
     ret += ' (' + time.toFixed(Test.precision) + 'ms)';
   }
   
+  if(Test.syntax == 'html') ret += '</li>';
+  
   offset = (Test.syntax == 'md'?'    ':'  ') + offset;
   
   switch(Test.mode){
     case 'details':
-      for(i = 0;i < c.length;i++) ret += getNL() + print(c[i],offset);
+      for(i = 0;i < c.length;i++) ret += getNL(true) + print(c[i],offset);
       break;
       
     case 'errors':
       if(notOk){
         for(i = 0;i < c.length;i++){
-          if(c[i].status != 'pass') ret += getNL() + print(c[i],offset);
+          if(c[i].status != 'pass') ret += getNL(true) + print(c[i],offset);
         }
       }
       break;
       
     default:
       if(notOk){
-        for(i = 0;i < c.length;i++) ret += getNL() + print(c[i],offset);
+        for(i = 0;i < c.length;i++) ret += getNL(true) + print(c[i],offset);
       }
   }
+  
+  if(Test.syntax == 'html') ret += '</ul>';
   
   return ret;
 }
@@ -136,7 +141,7 @@ function resolve(test){
   
   if(Test.mode == 'errors' && test.status == 'pass') return;
   
-  output(print(test,Test.syntax == 'md'?'- ':''));
+  output(print(test,Test.syntax == 'md'?'- ':''),true);
 }
 
 module.exports = Test = function(txt,callback){

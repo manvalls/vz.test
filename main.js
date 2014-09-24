@@ -17,7 +17,10 @@ var Test,
     status = new Property(),
     wraps = new Property(),
     tests = new Property(),
-    text = new Property();
+    text = new Property(),
+    
+    container,
+    subcontainer;
 
 function getNL(insideList){
   switch(Test.syntax){
@@ -44,10 +47,25 @@ function green(txt){
 }
 
 function output(txt,insideList){
+  var frag;
+  
   switch(Test.output){
     case 'std':
       proc.stdout.write(txt + getNL(insideList));
       break;
+    case 'browser':
+      
+      if(!container){
+        container = document.createElement('div');
+        container.style.fontFamily = 'monospace';
+        document.body.appendChild(container);
+        subcontainer = document.createElement('div');
+        container.appendChild(subcontainer);
+      }
+      
+      frag = document.createElement('span');
+      frag.innerHTML = txt + getNL(insideList);
+      subcontainer.appendChild(frag);
   }
 }
 
@@ -170,6 +188,143 @@ module.exports = Test = function(txt,callback){
   if(callback) this.wrap(callback)(this);
 };
 
+var units = [
+  'B',
+  'kiB',
+  'MiB',
+  'GiB',
+  'TiB',
+	'PiB',
+	'EiB',
+	'ZiB',
+	'YiB'
+  ];
+
+function getRAM(os){
+  var step = 0,
+      size = os.totalmem(),
+      i = 0;
+  
+  while(size > 1024 && i < units.length){
+		size /= 1024;
+		i++;
+	}
+  
+  size = size.toFixed(2);
+  
+	while(size.charAt(size.length - 1) == '0') size = size.substring(0,size.length - 1);
+	if(size.charAt(size.length - 1) == '.') size = size.substring(0,size.length - 1);
+  
+  return size + units[i];
+}
+
+Test.printInfo = function(){
+  var os;
+  
+  if(proc){
+    os = require('os');
+    output(os.type() + ' ' + os.release() + ' ' + os.arch());
+    output(os.cpus()[0].model);
+    output(getRAM(os) + ' RAM');
+    output('');
+  }else{
+    output(navigator.userAgent.replace(/(\s\w+\/)/g,getNL() + '$1'));
+    output('');
+  }
+  
+};
+
+Test.run = function(test){
+  var temp,
+      cont,
+      errors,
+      mode,
+      end,
+      run;
+  
+  if(!proc){
+    cont = document.createElement('div');
+    document.body.appendChild(cont);
+    
+    errors = document.createElement('input');
+    errors.type = 'checkbox';
+    
+    mode = document.createElement('select');
+    mode.innerHTML =  '<option value="default">default</option>' + 
+                      '<option value="errors">Show only failed tests</option>' + 
+                      '<option value="details">Show all tests</option>';
+    
+    run = document.createElement('input');
+    run.type = 'button';
+    run.value = 'Run test';
+    
+    end = document.createElement('a');
+    end.textContent = 'End test';
+    
+    end.onclick = function(){
+      end.remove();
+      showErrors();
+    }
+    
+    end.href = 'javascript:void(0);';
+    
+    run.onclick = function(){
+      cont.remove();
+      
+      Test.errors = errors.checked;
+      Test.mode = mode.value;
+      
+      Test.printInfo();
+      test();
+      
+      document.body.appendChild(document.createElement('br'));
+      document.body.appendChild(end);
+    };
+    
+    temp = document.createElement('span');
+    temp.innerHTML = 'Mode: ';
+    cont.appendChild(temp);
+    cont.appendChild(mode);
+    cont.appendChild(document.createElement('br'));
+    
+    cont.appendChild(errors);
+    temp = document.createElement('span');
+    temp.innerHTML = 'Show errors<br>';
+    cont.appendChild(temp);
+    
+    cont.appendChild(document.createElement('br'));
+    cont.appendChild(run);
+    
+    return;
+  }
+  
+  Test.printInfo();
+  test();
+};
+
+function showErrors(){
+  var i,unr = unresolved.slice(0),ret;
+  
+  for(i = 0;i < unr.length;i++){
+    if(tests.get(unr[i]) == 0){
+      status.set(unr[i],'error');
+      wraps.set(unr[i],0);
+      resolve(unr[i]);
+    }
+  }
+  
+  if(Test.errors && errors.length){
+    
+    ret = '\nErrors: ';
+    for(i = 0;i < errors.length;i++) if(errors[i].stack) ret += '\n\n' + errors[i].stack;
+    ret += '\n';
+    
+    ret = ret.replace(/\n/g,getNL()).replace(/\s/g,'&nbsp;');
+    
+    output(ret);
+  }
+}
+
 if(proc){
   
   Test.output = proc.env.output || 'std';
@@ -181,28 +336,7 @@ if(proc){
   Test.status = proc.env.status || 'tick';
   Test.syntax = proc.env.syntax || 'console';
   
-  proc.on('exit',function(){
-    var i,unr = unresolved.slice(0),ret;
-    
-    for(i = 0;i < unr.length;i++){
-      if(tests.get(unr[i]) == 0){
-        status.set(unr[i],'error');
-        wraps.set(unr[i],0);
-        resolve(unr[i]);
-      }
-    }
-    
-    if(Test.errors && errors.length){
-      
-      ret = '\nErrors: ';
-      for(i = 0;i < errors.length;i++) if(errors[i].stack) ret += '\n\n' + errors[i].stack;
-      ret += '\n';
-      
-      ret = ret.replace(/\n/g,getNL());
-      
-      output(ret);
-    }
-  });
+  proc.on('exit',showErrors);
   
 }else{
   
@@ -233,6 +367,8 @@ Object.defineProperties(Test.prototype,{
     
     return function(){
       var ret;
+      
+      if(resolved.get(self)) return;
       
       if(called) throw new Error('A wrap can only be called once');
       called = true;

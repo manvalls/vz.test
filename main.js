@@ -5,9 +5,11 @@ var Test,
     Property = require('vz.property'),
     constants = require('vz.constants'),
     assert = require('assert'),
+    domain = global.process?require('dom'+'ain'):null,
     
     proc = global.process,
     
+    _domain = new Property(),
     resolved = new Property(),
     t0 = new Property(),
     t = new Property(),
@@ -162,7 +164,28 @@ function resolve(test){
   output(print(test,Test.syntax == 'md'?'- ':''),true);
 }
 
+function onDomainError(e){
+  var that = this.that;
+  
+  errors.push(e);
+  
+  if(tests.get(that) == 0){
+    status.set(that,'error');
+    wraps.set(that,0);
+    resolve(that);
+  }
+  
+}
+
 module.exports = Test = function(txt,callback){
+  var d;
+  
+  if(domain){
+    d = domain.create();
+    d.that = this;
+    _domain.set(this,d);
+    d.on('error',onDomainError);
+  }
   
   if(Test.times){
     if(proc) t0.set(this,proc.hrtime());
@@ -366,7 +389,7 @@ Object.defineProperties(Test.prototype,{
     if(resolved.get(this)) throw new Error('Test already resolved, cannot call wrap again');
     wraps.of(this).value++;
     
-    return function(){
+    function wrap(){
       var ret;
       
       if(resolved.get(self)) return;
@@ -389,7 +412,11 @@ Object.defineProperties(Test.prototype,{
       if(--wraps.of(self).value == 0 && tests.get(self) == 0) resolve(self);
       
       return ret;
-    };
+    }
+    
+    if(domain) wrap = _domain.get(this).bind(wrap);
+    
+    return wrap;
   }}
 });
 

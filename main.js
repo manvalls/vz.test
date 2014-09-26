@@ -281,8 +281,9 @@ Test.run = function(test){
     run.type = 'button';
     run.value = 'Run test';
     
-    end = document.createElement('a');
-    end.textContent = 'End test';
+    end = document.createElement('input');
+    end.type = 'button';
+    end.value = 'End test';
     
     end.onclick = function(){
       end.remove();

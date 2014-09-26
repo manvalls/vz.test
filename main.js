@@ -319,7 +319,8 @@ function showErrors(){
     for(i = 0;i < errors.length;i++) if(errors[i].stack) ret += '\n\n' + errors[i].stack;
     ret += '\n';
     
-    ret = ret.replace(/\n/g,getNL()).replace(/\s/g,'&nbsp;');
+    ret = ret.replace(/\n/g,getNL());
+    if(Test.syntax == 'html') ret = ret.replace(/\s/g,'&nbsp;');
     
     output(ret);
   }

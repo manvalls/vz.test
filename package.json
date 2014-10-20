@@ -4,8 +4,11 @@
   "description": "Test helper",
   "main": "main.js",
   "dependencies": {
-    "vz.property": "",
-    "vz.constants": ""
+    "vz.walk": "",
+    "vz.yarr": ""
+  },
+  "engines": {
+    "node": ">=0.11.x"
   },
   "repository": {
     "type": "git",

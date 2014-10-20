@@ -1,423 +1,93 @@
-var Test,
+var walk = require('vz.walk'),
+    Yarr = require('vz.yarr'),
+    print = require('./main/print.js'),
+    process = global.process,
     stack = [],
-    unresolved = [],
-    errors = [],
-    Property = require('vz.property'),
-    constants = require('vz.constants'),
-    assert = require('assert'),
-    domain = global.process?require('dom'+'ain'):null,
-    
-    proc = global.process,
-    
-    _domain = new Property(),
-    resolved = new Property(),
-    t0 = new Property(),
-    t = new Property(),
-    ok = new Property(),
-    parent = new Property(),
-    children = new Property(),
-    status = new Property(),
-    wraps = new Property(),
-    tests = new Property(),
-    text = new Property(),
-    
-    container,
-    subcontainer;
+    tests = new Yarr(),
+    results = new Yarr();
 
-function getNL(insideList){
-  switch(Test.syntax){
-    case 'md': return '  \n';
-    case 'console': return '\n';
-    case 'html': return insideList?'\n':'<br>\n';
-  }
+function Node(info){
+  this.info = info;
+  this.children = [];
+  this.parent = null;
+  this.error = null;
+  this.t = null;
+  this.t0 = null;
+  this.t1 = null;
 }
 
-function red(txt){
-  switch(Test.syntax){
-    case 'md': return txt;
-    case 'console': return '\x1B[31m' + txt + '\x1B[39m';
-    case 'html': return '<span style="color: red;">' + txt + '</span>';
-  }
+Node.prototype.setParent = function(parent){
+  parent.children.push(this);
+  this.parent = parent;
 }
 
-function green(txt){
-  switch(Test.syntax){
-    case 'md': return txt;
-    case 'console': return '\x1B[32m' + txt + '\x1B[39m';
-    case 'html': return '<span style="color: green;">' + txt + '</span>';
-  }
+Node.prototype.resolve = function(error){
+  if(!error) return;
+  if(this.error) return;
+  this.error = error;
+  if(this.parent) this.parent.resolve(error);
 }
 
-function output(txt,insideList){
-  var frag;
+function getTime(){
+  var now;
   
-  switch(Test.output){
-    case 'std':
-      proc.stdout.write(txt + getNL(insideList));
-      break;
-    case 'browser':
-      
-      if(!container){
-        container = document.createElement('div');
-        container.style.fontFamily = 'monospace';
-        document.body.appendChild(container);
-        subcontainer = document.createElement('div');
-        container.appendChild(subcontainer);
-      }
-      
-      frag = document.createElement('span');
-      frag.innerHTML = txt + getNL(insideList);
-      subcontainer.appendChild(frag);
+  if(process){
+    now = process.hrtime();
+    return now[0] * 1e3 + now[1] * 1e-6;
   }
+  
+  return performance.now();
 }
 
-function print(test,offset){
-  var ret = '',
-      notOk = test.status != 'pass',
-      c = children.get(test),
-      time,
-      i;
-  
-  ret += offset;
-  if(Test.syntax == 'html') ret += '<ul><li style="font-family: monospace;list-style-type: none;">';
-  if(Test.numbers && c.length) ret += '[' + ok.get(test) + '/' + c.length + ']';
-  ret += ' ' + text.get(test);
-  
-  switch(Test.status){
-    case 'gfm':
-      ret += ' ' + (notOk?':heavy_multiplication_x:':':heavy_check_mark:');
-      break;
-    case 'tick':
-      ret += ' ' + (notOk?red('✗'):green('✓'));
-      break;
-    case 'text':
-      ret += ' ' + (notOk?red(test.status):green(test.status));
-      break;
-    case 'TEXT':
-      ret += ' ' + (notOk?red(test.status.toUpperCase()):green(test.status.toUpperCase()));
-      break;
-  }
-  
-  if(Test.times && !notOk){
-    time = t.get(test);
-    if(proc) time = (time[0] + time[1] * 1e-9)*1000;
-    ret += ' (' + time.toFixed(Test.precision) + 'ms)';
-  }
-  
-  if(Test.syntax == 'html') ret += '</li>';
-  
-  offset = (Test.syntax == 'md'?'    ':'  ') + offset;
-  
-  switch(Test.mode){
-    case 'details':
-      for(i = 0;i < c.length;i++) ret += getNL(true) + print(c[i],offset);
-      break;
-      
-    case 'errors':
-      if(notOk){
-        for(i = 0;i < c.length;i++){
-          if(c[i].status != 'pass') ret += getNL(true) + print(c[i],offset);
-        }
-      }
-      break;
-      
-    default:
-      if(notOk){
-        for(i = 0;i < c.length;i++) ret += getNL(true) + print(c[i],offset);
-      }
-  }
-  
-  if(Test.syntax == 'html') ret += '</ul>';
-  
-  return ret;
-}
-
-function resolve(test){
-  var p,
-      i;
-  
-  if(Test.times){
-    if(proc) t.set(test,proc.hrtime(t0.get(test)));
-    else t.set(test,performance.now() - t0.get(test));
-  }
-  
-  resolved.set(test,true);
-  p = parent.get(test),
-  i = unresolved.indexOf(test)
-  
-  if(i != -1) unresolved.splice(i,1);
-  
-  if(p){
-    if(p.status != 'error'){
-      if(test.status == 'error') status.set(p,'error');
-      else if(test.status == 'fail') status.set(p,'fail');
-    }
-    
-    if(test.status == 'pass') ok.of(p).value++;
-    
-    if(--tests.of(p).value == 0 && wraps.get(p) == 0) resolve(p);
-    return;
-  }
-  
-  if(Test.mode == 'errors' && test.status == 'pass') return;
-  
-  output(print(test,Test.syntax == 'md'?'- ':''),true);
-}
-
-function onDomainError(e){
-  var that = this.that;
-  
-  errors.push(e);
-  
-  if(tests.get(that) == 0){
-    status.set(that,'error');
-    wraps.set(that,0);
-    resolve(that);
-  }
-  
-}
-
-module.exports = Test = function(txt,callback){
-  var d;
-  
-  if(domain){
-    d = domain.create();
-    d.that = this;
-    _domain.set(this,d);
-    d.on('error',onDomainError);
-  }
-  
-  if(Test.times){
-    if(proc) t0.set(this,proc.hrtime());
-    else t0.set(this,performance.now());
-  }
-  
-  resolved.set(this,false);
-  unresolved.push(this);
-  
-  text.set(this,txt);
-  children.set(this,[]);
-  status.set(this,'pass');
-  wraps.set(this,0);
-  tests.set(this,0);
-  ok.set(this,0);
-  
-  if(stack.length){
-    children.get(stack[stack.length - 1]).push(this);
-    parent.set(this,stack[stack.length - 1]);
-    tests.of(stack[stack.length - 1]).value++;
-  }
-  
-  if(callback) this.wrap(callback)(this);
+Node.prototype.start = function(){
+  this.t0 = getTime();
 };
 
-var units = [
-  'B',
-  'kiB',
-  'MiB',
-  'GiB',
-  'TiB',
-	'PiB',
-	'EiB',
-	'ZiB',
-	'YiB'
-  ];
-
-function getRAM(os){
-  var step = 0,
-      size = os.totalmem(),
-      i = 0;
-  
-  while(size > 1024 && i < units.length){
-		size /= 1024;
-		i++;
-	}
-  
-  size = size.toFixed(2);
-  
-	while(size.charAt(size.length - 1) == '0') size = size.substring(0,size.length - 1);
-	if(size.charAt(size.length - 1) == '.') size = size.substring(0,size.length - 1);
-  
-  return size + units[i];
-}
-
-Test.printInfo = function(){
-  var os;
-  
-  if(proc){
-    os = require('os');
-    output(os.type() + ' ' + os.release() + ' ' + os.arch());
-    output(os.cpus()[0].model);
-    output(getRAM(os) + ' RAM');
-    output('');
-  }else{
-    output(navigator.userAgent.replace(/(\s\w+\/)/g,getNL() + '$1'));
-    output('');
-  }
-  
+Node.prototype.end = function(){
+  this.t1 = getTime();
+  this.t = this.t1 - this.t0;
 };
 
-Test.run = function(test){
-  var temp,
-      cont,
-      errors,
-      mode,
-      end,
-      run;
+module.exports = function(info,generator){
+  var node = new Node(info);
   
-  if(!proc){
-    cont = document.createElement('div');
-    document.body.appendChild(cont);
+  function* test(){
+    var error = null,ret;
     
-    errors = document.createElement('input');
-    errors.type = 'checkbox';
+    stack.push(node);
     
-    mode = document.createElement('select');
-    mode.innerHTML =  '<option value="default">default</option>' + 
-                      '<option value="errors">Show only failed tests</option>' + 
-                      '<option value="details">Show all tests</option>';
+    node.start();
+    try{ ret = yield walk(generator); }
+    catch(e){ error = e; }
+    node.end();
     
-    run = document.createElement('input');
-    run.type = 'button';
-    run.value = 'Run test';
+    node.resolve(error);
     
-    end = document.createElement('input');
-    end.type = 'button';
-    end.value = 'End test';
+    stack.pop();
     
-    end.onclick = function(){
-      end.remove();
-      showErrors();
-    }
+    if(stack.length == 0) print(node);
     
-    end.href = 'javascript:void(0);';
-    
-    run.onclick = function(){
-      cont.remove();
-      
-      Test.errors = errors.checked;
-      Test.mode = mode.value;
-      
-      Test.printInfo();
-      test();
-      
-      document.body.appendChild(document.createElement('br'));
-      document.body.appendChild(end);
-    };
-    
-    temp = document.createElement('span');
-    temp.innerHTML = 'Mode: ';
-    cont.appendChild(temp);
-    cont.appendChild(mode);
-    cont.appendChild(document.createElement('br'));
-    
-    cont.appendChild(errors);
-    temp = document.createElement('span');
-    temp.innerHTML = 'Show errors<br>';
-    cont.appendChild(temp);
-    
-    cont.appendChild(document.createElement('br'));
-    cont.appendChild(run);
-    
-    return;
+    return ret;
   }
   
-  Test.printInfo();
-  test();
+  if(!stack.length){
+    tests.push(test);
+    return results.shift();
+  }
+  
+  node.setParent(stack[stack.length - 1]);
+  return walk(test);
 };
 
-function showErrors(){
-  var i,unr = unresolved.slice(0),ret;
+// Execute
+
+walk(function*(){
+  var yd;
   
-  for(i = 0;i < unr.length;i++){
-    if(tests.get(unr[i]) == 0){
-      status.set(unr[i],'error');
-      wraps.set(unr[i],0);
-      resolve(unr[i]);
-    }
+  while(true){
+    yd = walk(yield tests.shift());
+    yield results.push(yield yd);
   }
   
-  if(Test.errors && errors.length){
-    
-    ret = '\nErrors: ';
-    for(i = 0;i < errors.length;i++) if(errors[i].stack) ret += '\n\n' + errors[i].stack;
-    ret += '\n';
-    
-    ret = ret.replace(/\n/g,getNL());
-    if(Test.syntax == 'html') ret = ret.replace(/\s/g,'&nbsp;');
-    
-    output(ret);
-  }
-}
-
-if(proc){
-  
-  Test.output = proc.env.output || 'std';
-  Test.times = proc.env.times?(proc.env.times == 'true'?true:false):true;
-  Test.numbers = proc.env.numbers?(proc.env.numbers == 'true'?true:false):true;
-  Test.errors = proc.env.errors?(proc.env.errors == 'true'?true:false):false;
-  Test.precision = proc.env.precision || '2';
-  Test.mode = proc.env.mode || 'default';
-  Test.status = proc.env.status || 'tick';
-  Test.syntax = proc.env.syntax || 'console';
-  
-  proc.on('exit',showErrors);
-  
-}else{
-  
-  Test.output = 'browser';
-  Test.times = true;
-  Test.numbers = true;
-  Test.errors = false;
-  Test.precision = '2';
-  Test.mode = 'default';
-  Test.status = 'tick';
-  Test.syntax = 'html';
-  
-}
-
-Object.defineProperties(Test.prototype,{
-  status: {
-    get: function(){
-      return status.get(this);
-    },
-    set: constants.NOOP
-  },
-  wrap: {value: function(f){
-    var self = this,
-        called = false;
-    
-    if(resolved.get(this)) throw new Error('Test already resolved, cannot call wrap again');
-    wraps.of(this).value++;
-    
-    function wrap(){
-      var ret;
-      
-      if(resolved.get(self)) return;
-      
-      if(called) throw new Error('A wrap can only be called once');
-      called = true;
-      
-      stack.push(self);
-      
-      try{ ret = f.apply(this,arguments); }
-      catch(e){
-        if(e instanceof assert.AssertionError) status.set(self,'fail');
-        else status.set(self,'error');
-        
-        errors.push(e);
-      }
-      
-      stack.pop();
-      
-      if(--wraps.of(self).value == 0 && tests.get(self) == 0) resolve(self);
-      
-      return ret;
-    }
-    
-    if(domain) wrap = _domain.get(this).bind(wrap);
-    
-    return wrap;
-  }}
 });
 

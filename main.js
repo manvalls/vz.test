@@ -3,6 +3,7 @@ var walk = require('vz.walk'),
     print = require('./main/print.js'),
     process = global.process,
     stack = [],
+    code = 0,
     tests = new Yarr(),
     results = new Yarr();
 
@@ -23,6 +24,7 @@ Node.prototype.setParent = function(parent){
 
 Node.prototype.resolve = function(error){
   if(!error) return;
+  code = 1;
   if(this.error) return;
   this.error = error;
   if(this.parent) this.parent.resolve(error);
@@ -78,6 +80,10 @@ module.exports = function(info,generator){
   node.setParent(stack[stack.length - 1]);
   return walk(test);
 };
+
+process.on('exit',function(){
+  process.exit(code);
+});
 
 // Execute
 

@@ -81,7 +81,7 @@ module.exports = function(info,generator){
   return walk(test);
 };
 
-process.on('exit',function(){
+if(process) process.on('exit',function(){
   process.exit(code);
 });
 

@@ -6,10 +6,10 @@ var _default = require('./print/default.js'),
     subcontainer;
 
 if(process) options = {
-  showErrors: process.env.showErrors == 'true' || 'e' in process.env,
-  showDetails: process.env.showDetails == 'true' || 'd' in process.env,
-  showCompleted: process.env.showCompleted == 'true' || 'c' in process.env,
-  showTime: process.env.showTime == 'true' || 't' in process.env,
+  showErrors: process.env.showErrors == 'true' || process.env.e == '',
+  showDetails: process.env.showDetails == 'true' || process.env.d == '',
+  showCompleted: process.env.showCompleted == 'true' || process.env.c == '',
+  showTime: process.env.showTime == 'true' || process.env.t = '',
   syntax: process.env.syntax || process.env.s || 'console',
   indicator: process.env.indicator || process.env.i || 'tick'
 };

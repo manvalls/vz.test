@@ -9,7 +9,7 @@ if(process) options = {
   showErrors: process.env.showErrors == 'true' || process.env.e == '',
   showDetails: process.env.showDetails == 'true' || process.env.d == '',
   showCompleted: process.env.showCompleted == 'true' || process.env.c == '',
-  showTime: process.env.showTime == 'true' || process.env.t = '',
+  showTime: process.env.showTime == 'true' || process.env.t == '',
   syntax: process.env.syntax || process.env.s || 'console',
   indicator: process.env.indicator || process.env.i || 'tick'
 };

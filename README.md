@@ -14,12 +14,18 @@ No piece of software is ever completed, feel free to contribute and be humble.
 var test = require('vz.test'),
     assert = require('assert');
 
-test('Array',function*(){
-  yield test('#indexOf()',function*(){
-    yield test('should return -1 when the value is not present',function*(){
+test('Array',function(){
+  
+  test('#indexOf()',function(){
+    
+    test('should return -1 when the value is not present',function(){
+      
       assert([1,2,3].indexOf(5) == -1);
       assert([1,2,3].indexOf(0) == -1);
+      
     });
+    
   });
+  
 });
 ```

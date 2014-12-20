@@ -1,11 +1,13 @@
 var walk = require('vz.walk'),
     Yarr = require('vz.yarr'),
     print = require('./main/print.js'),
+    
     process = global.process,
-    stack = [],
     code = 0,
-    tests = new Yarr(),
-    results = new Yarr();
+    test,
+    stack = [];
+
+// Node
 
 function Node(info){
   this.info = info;
@@ -24,9 +26,11 @@ Node.prototype.setParent = function(parent){
 
 Node.prototype.resolve = function(error){
   if(!error) return;
-  code = 1;
   if(this.error) return;
+  
+  code = 1;
   this.error = error;
+  
   if(this.parent) this.parent.resolve(error);
 }
 
@@ -50,50 +54,39 @@ Node.prototype.end = function(){
   this.t = this.t1 - this.t0;
 };
 
-module.exports = function(info,generator){
-  var node = new Node(info);
+
+function before(node){
+  stack.push(node);
+}
+
+function after(){
+  stack.pop();
+}
+
+module.exports = test = walk.wrap(function*(info,generator,args,thisArg){
+  var node = new Node(info),
+      ret,error;
   
-  function* test(){
-    var error = null,ret;
-    
-    stack.push(node);
-    
-    node.start();
-    try{ ret = yield walk(generator); }
-    catch(e){ error = e; }
-    node.end();
-    
-    node.resolve(error);
-    
-    stack.pop();
-    
-    if(stack.length == 0) print(node);
-    
-    return ret;
-  }
+  if(stack.length) node.setParent(stack[stack.length - 1]);
   
-  if(!stack.length){
-    tests.push(test);
-    return results.shift();
-  }
+  node.start();
+  try{
+    ret = yield walk(generator,args || [],thisArg || this,{
+      before: before,
+      after: after,
+      id: node
+    });
+  }catch(e){ error = e; }
+  node.end();
   
-  node.setParent(stack[stack.length - 1]);
-  return walk(test);
-};
+  node.resolve(error);
+  
+  if(!node.parent) print(node);
+  
+  return ret;
+});
 
 if(process) process.on('exit',function(){
   process.exit(code);
-});
-
-// Execute
-
-walk(function*(){
-  var yd;
-  
-  while(true){
-    yd = walk(yield tests.shift());
-    yield results.push(yield yd);
-  }
-  
 });
 

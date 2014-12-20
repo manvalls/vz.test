@@ -1,7 +1,8 @@
 var walk = require('vz.walk'),
     Yarr = require('vz.yarr'),
-    print = require('./main/print.js'),
+    Yielded = require('vz.yielded'),
     
+    print = require('./main/print.js'),
     process = global.process,
     code = 0,
     test,
@@ -12,6 +13,8 @@ var walk = require('vz.walk'),
 function Node(info){
   this.info = info;
   this.children = [];
+  this.pending = 0;
+  this.done = new Yielded();
   this.parent = null;
   this.error = null;
   this.t = null;
@@ -21,6 +24,7 @@ function Node(info){
 
 Node.prototype.setParent = function(parent){
   parent.children.push(this);
+  parent.pending++;
   this.parent = parent;
 }
 
@@ -52,6 +56,10 @@ Node.prototype.start = function(){
 Node.prototype.end = function(){
   this.t1 = getTime();
   this.t = this.t1 - this.t0;
+  
+  if(this.parent){
+    if(--this.parent.pending == 0) this.parent.done.done = true;
+  }
 };
 
 
@@ -70,6 +78,7 @@ module.exports = test = walk.wrap(function*(info,generator,args,thisArg){
   if(stack.length) node.setParent(stack[stack.length - 1]);
   
   node.start();
+  
   try{
     ret = yield walk(generator,args || [],thisArg || this,{
       before: before,
@@ -77,6 +86,9 @@ module.exports = test = walk.wrap(function*(info,generator,args,thisArg){
       id: node
     });
   }catch(e){ error = e; }
+  
+  if(node.pending) yield node.done;
+  
   node.end();
   
   node.resolve(error);

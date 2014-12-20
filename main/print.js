@@ -1,23 +1,35 @@
 var _default = require('./print/default.js'),
+    tap = require('./print/tap.js'),
+    
+    test = require('../main.js'),
     process = global.process,
     trees = [],
+    
+    endTO,
+    
     options,
     container,
     subcontainer;
 
-if(process) options = {
-  showErrors: process.env.showErrors == 'true' || process.env.e == '',
-  showDetails: process.env.showDetails == 'true' || process.env.d == '',
-  showCompleted: process.env.showCompleted == 'true' || process.env.c == '',
-  showTime: process.env.showTime == 'true' || process.env.t == '',
-  syntax: process.env.syntax || process.env.s || 'console',
-  indicator: process.env.indicator || process.env.i || 'tick'
-};
-else (function(){
+if(process){
+  options = {
+    showErrors: process.env.showErrors == 'true' || process.env.e == '',
+    showDetails: process.env.showDetails == 'true' || process.env.d == '',
+    showCompleted: process.env.showCompleted == 'true' || process.env.c == '',
+    showTime: process.env.showTime == 'true' || process.env.t == '',
+    syntax: process.env.syntax || process.env.s || 'console',
+    indicator: process.env.indicator || process.env.i || 'tick'
+  };
+  
+  if(process.env.tap == '') process.stdout.write(tap.before(options));
+  else process.stdout.write(_default.before(options));
+}else (function(){
   var errorsButton,
       detailsButton,
       timeButton,
       completedButton;
+  
+  console.log(tap.before({syntax: 'console'}).replace(/\n$/,''));
   
   options = {
     showErrors: false,
@@ -91,13 +103,35 @@ function show(){
   }
 }
 
+
+function checkEnd(){
+  if(!test.running){
+    if(process){
+      if(process.env.tap == '') process.stdout.write(tap.after(options));
+      else process.stdout.write(_default.after(options));
+    }else{
+      console.log(tap.after({syntax: 'console'}).replace(/\n$/,''));
+    }
+  }
+}
+
 module.exports = function(tree){
   var i;
   
-  if(process) process.stdout.write(_default(tree,options));
-  else{
+  clearTimeout(endTO);
+  endTO = setTimeout(checkEnd);
+  
+  if(process){
+    if(process.env.tap == '') process.stdout.write(tap(tree,options));
+    else process.stdout.write(_default(tree,options));
+  }else{
+    console.log(tap(tree,{syntax: 'console'}).replace(/\n$/,''));
     trees.push(tree);
     show();
   }
+};
+
+module.exports.check = function(){
+  checkEnd();
 };
 

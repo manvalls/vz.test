@@ -2,9 +2,10 @@ var walk = require('vz.walk'),
     Yarr = require('vz.yarr'),
     Yielded = require('vz.yielded'),
     
-    print = require('./main/print.js'),
+    print,
     process = global.process,
     code = 0,
+    pending = [],
     test,
     stack = [];
 
@@ -50,10 +51,14 @@ function getTime(){
 }
 
 Node.prototype.start = function(){
+  pending.push(this);
   this.t0 = getTime();
 };
 
 Node.prototype.end = function(){
+  var i = pending.indexOf(this);
+  
+  pending.splice(i,1);
   this.t1 = getTime();
   this.t = this.t1 - this.t0;
   
@@ -98,7 +103,37 @@ module.exports = test = walk.wrap(function*(info,generator,args,thisArg){
   return ret;
 });
 
+print = require('./main/print.js');
+
+Object.defineProperty(test,'running',{get: function(){
+  return pending.length > 0;
+}});
+
 if(process) process.on('exit',function(){
+  var i,e,p;
+  
+  if(pending.length > 0){
+    e = new Error('Unfinished test');
+    
+    p = pending.slice();
+    for(i = 0;i < p.length;i++){
+      if(!p[i].children.length){
+        p[i].end(true);
+        p[i].resolve(e);
+        if(!p[i].parent) print(p[i]);
+      }
+    }
+    
+    p = pending.slice();
+    for(i = 0;i < p.length;i++){
+      p[i].end();
+      p[i].resolve(e);
+      if(!p[i].parent) print(p[i]);
+    }
+    
+    print.check();
+  }
+  
   process.exit(code);
 });
 

@@ -77,3 +77,5 @@ module.exports = function(tree,options){
   return get(tree,'',options);
 };
 
+module.exports.before = module.exports.after = function(){ return ''; }
+

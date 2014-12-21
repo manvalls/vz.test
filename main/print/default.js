@@ -1,32 +1,11 @@
-function getNL(syntax){
-  switch(syntax){
-    case 'html': return '<br>';
-    default: return '\n';
-  }
-}
-
-function red(txt,syntax){
-  switch(syntax){
-    case 'md': return txt;
-    case 'html': return '<span style="color: red;">' + txt + '</span>';
-    default: return '\x1B[31m' + txt + '\x1B[39m';
-  }
-}
-
-function green(txt,syntax){
-  switch(syntax){
-    case 'md': return txt;
-    case 'html': return '<span style="color: green;">' + txt + '</span>';
-    default: return '\x1B[32m' + txt + '\x1B[39m';
-  }
-}
+var syntax = require('./syntax.js');
 
 function getOk(options){
-  return green('✓',options.syntax);
+  return syntax.green('✓',options.syntax);
 }
 
 function getNok(options){
-  return red('✗',options.syntax);
+  return syntax.red('✗',options.syntax);
 }
 
 function getTime(node,options){
@@ -52,18 +31,18 @@ function get(node,offset,options){
   txt += getCompleted(node,options) + node.info;
   
   if(!node.error){
-    txt += ' ' + getOk(options) + getTime(node,options) + getNL(options.syntax);
+    txt += ' ' + getOk(options) + getTime(node,options) + syntax.getNL(options.syntax);
     if(options.showDetails) for(i = 0;i < node.children.length;i++) txt += get(node.children[i],offset,options);
   }else{
-    txt += ' ' + getNok(options) + getNL(options.syntax);
+    txt += ' ' + getNok(options) + syntax.getNL(options.syntax);
     
     if(node.children.length == 0){
       if(options.showErrors){
         txt += offset + 
           (node.error.stack?
-          node.error.stack.replace(/\n/g,getNL(options.syntax) + offset):
+          node.error.stack.replace(/\n/g,syntax.getNL(options.syntax) + offset):
           node.error)
-           + getNL(options.syntax);
+           + syntax.getNL(options.syntax);
       }
     }else for(i = 0;i < node.children.length;i++) txt += get(node.children[i],offset,options);
   }

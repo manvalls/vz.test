@@ -52,7 +52,7 @@ if(process){
   errorsButton.type = 'checkbox';
   errorsButton.onclick = function(){
     options.showErrors = this.checked;
-    show();
+    showHTML();
   };
   
   container.appendChild(errorsButton);
@@ -63,7 +63,7 @@ if(process){
   detailsButton.type = 'checkbox';
   detailsButton.onclick = function(){
     options.showDetails = this.checked;
-    show();
+    showHTML();
   };
   
   container.appendChild(detailsButton);
@@ -74,7 +74,7 @@ if(process){
   timeButton.type = 'checkbox';
   timeButton.onclick = function(){
     options.showTime = this.checked;
-    show();
+    showHTML();
   };
   
   container.appendChild(timeButton);
@@ -85,7 +85,7 @@ if(process){
   completedButton.type = 'checkbox';
   completedButton.onclick = function(){
     options.showCompleted = this.checked;
-    show();
+    showHTML();
   };
   
   container.appendChild(completedButton);
@@ -95,14 +95,14 @@ if(process){
   document.body.appendChild(container);
 })();
 
-function show(){
-  subcontainer.innerHTML = _default.before();
+function showHTML(){
+  subcontainer.innerHTML = _default.before(options);
   
   for(i = 0;i < trees.length;i++){
     subcontainer.innerHTML += _default(trees[i],options);
   }
   
-  subcontainer.innerHTML += _default.after();
+  subcontainer.innerHTML += _default.after(options);
 }
 
 
@@ -129,7 +129,7 @@ module.exports = function(tree){
   }else{
     console.log(tap(tree,{syntax: 'console'}).replace(/\n$/,''));
     trees.push(tree);
-    show();
+    showHTML();
   }
 };
 

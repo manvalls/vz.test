@@ -96,11 +96,13 @@ if(process){
 })();
 
 function show(){
-  subcontainer.innerHTML = '';
+  subcontainer.innerHTML = _default.before();
   
   for(i = 0;i < trees.length;i++){
     subcontainer.innerHTML += _default(trees[i],options);
   }
+  
+  subcontainer.innerHTML += _default.after();
 }
 
 

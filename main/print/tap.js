@@ -1,4 +1,4 @@
-var seq = 0;
+var seq;
 
 module.exports = function(tree,options){
   var msg;
@@ -11,6 +11,7 @@ module.exports = function(tree,options){
 };
 
 module.exports.before = function(){
+  seq = 0;
   return 'TAP version 13\n'
 };
 

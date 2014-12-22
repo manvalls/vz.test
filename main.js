@@ -1,5 +1,4 @@
 var walk = require('vz.walk'),
-    Yarr = require('vz.yarr'),
     Yielded = require('vz.yielded'),
     
     print,

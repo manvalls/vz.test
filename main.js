@@ -6,8 +6,7 @@ var walk = require('vz.walk'),
     process = global.process,
     code = 0,
     pending = [],
-    test,
-    stack = [];
+    test;
 
 // Node
 
@@ -39,6 +38,10 @@ Node.prototype.resolve = function(error){
   if(this.parent) this.parent.resolve(error);
 }
 
+Node.prototype.toString = function(){
+  return this.info;
+}
+
 function getTime(){
   var now;
   
@@ -68,29 +71,20 @@ Node.prototype.end = function(){
 };
 
 
-function before(node){
-  stack.push(node);
-}
-
-function after(){
-  stack.pop();
-}
-
 module.exports = test = walk.wrap(function*(info,generator,args,thisArg){
   var node = new Node(info),
-      ret,error;
+      ret,error,stack,i;
   
-  if(stack.length) node.setParent(stack[stack.length - 1]);
+  stack = walk.getStack();
+  for(i = stack.length - 1;i >= 0;i--) if(stack[i] instanceof Node){
+    node.setParent(stack[i]);
+    break;
+  }
   
   node.start();
   
-  try{
-    ret = yield walk(generator,args || [],thisArg || this,{
-      before: before,
-      after: after,
-      id: node
-    });
-  }catch(e){ error = e; }
+  try{ ret = yield walk(generator,args || [],thisArg || this,node); }
+  catch(e){ error = e; }
   
   if(node.pending) yield node.done;
   

@@ -130,3 +130,6 @@ if(process) process.on('exit',function(){
   process.exit(code);
 });
 
+// Trace
+
+walk.trace();

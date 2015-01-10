@@ -23,7 +23,6 @@ function Node(info){
 
 Node.prototype.setParent = function(parent){
   parent.children.push(this);
-  parent.pending++;
   this.parent = parent;
 }
 
@@ -53,16 +52,20 @@ function getTime(){
 }
 
 Node.prototype.start = function(){
-  pending.push(this);
   this.t0 = getTime();
+  
+  if(this.parent) this.parent.pending++;
+  pending.push(this);
 };
 
 Node.prototype.end = function(){
-  var i = pending.indexOf(this);
+  var i;
   
-  pending.splice(i,1);
   this.t1 = getTime();
   this.t = this.t1 - this.t0;
+  
+  i = pending.indexOf(this);
+  pending.splice(i,1);
   
   if(this.parent){
     if(--this.parent.pending == 0) this.parent.done.done = true;
@@ -87,9 +90,8 @@ module.exports = test = walk.wrap(function*(info,generator,args,thisArg){
   
   if(node.pending) yield node.done;
   
-  node.end();
-  
   node.resolve(error);
+  node.end();
   
   if(!node.parent) print(node);
   
@@ -111,17 +113,9 @@ if(process) process.on('exit',function(){
     p = pending.slice();
     for(i = 0;i < p.length;i++){
       if(!p[i].children.length){
-        p[i].end(true);
         p[i].resolve(e);
-        if(!p[i].parent) print(p[i]);
+        p[i].end();
       }
-    }
-    
-    p = pending.slice();
-    for(i = 0;i < p.length;i++){
-      p[i].end();
-      p[i].resolve(e);
-      if(!p[i].parent) print(p[i]);
     }
     
     print.check();

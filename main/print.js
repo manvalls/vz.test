@@ -29,6 +29,7 @@ if(process){
       timeButton,
       completedButton;
   
+  console.log(navigator.userAgent + '\n');
   console.log(tap.before({syntax: 'console'}).replace(/\n$/,''));
   
   options = {
@@ -112,7 +113,7 @@ function checkEnd(){
       if(process.env.tap == '') process.stdout.write(tap.after(options));
       else process.stdout.write(_default.after(options));
     }else{
-      console.log(tap.after({syntax: 'console'}).replace(/\n$/,''));
+      console.log(tap.after({syntax: 'console'}).replace(/\n$/,'') + '\n');
     }
   }
 }

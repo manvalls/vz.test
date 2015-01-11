@@ -27,7 +27,7 @@ function getCompleted(node,options){
 function get(node,offset,options){
   var txt = offset,i;
   
-  offset = ' ' + offset;
+  offset = '  ' + offset;
   txt += getCompleted(node,options) + node.info;
   
   if(!node.error){
@@ -40,8 +40,13 @@ function get(node,offset,options){
       if(options.showErrors){
         txt += offset + 
           (node.error.stack?
-          node.error.stack.replace(/\n/g,syntax.getNL(options.syntax) + offset):
-          node.error)
+            (node.error.stack.match(/^Error/)?
+              node.error.stack.replace(/\n/g,syntax.getNL(options.syntax) + offset):
+              node.error + syntax.getNL(options.syntax) + offset + '    ' +
+              node.error.stack.replace(/\n/g,syntax.getNL(options.syntax) + offset + '    ')
+            ):
+            node.error
+          )
            + syntax.getNL(options.syntax);
       }
     }else for(i = 0;i < node.children.length;i++) txt += get(node.children[i],offset,options);
